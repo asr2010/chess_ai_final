@@ -87,7 +87,7 @@ def indices_to_one_hot(states):
     #array_he = np.eye(nb_classes)[targets]
     #hotencode = [[i for i in j] for j in array_he]
     hotencode_list = np.array(hotencode)
-    hot_arr = hotencode_list.reshape(len(states),13,64)
+    hot_arr = hotencode_list.reshape(len(states),832)
     print(hot_arr[0])
     print(len(hot_arr))
     # array_he.reshape(64,-1)
