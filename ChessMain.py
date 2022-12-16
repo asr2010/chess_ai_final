@@ -69,9 +69,9 @@ def main(mode, wall, board, filename, score_tree, score_rand):
 
     gameOver = False
     running = True
-
-    playerOne = 0  # Human : 0, Tree AI : 1, Random AI : 2
-    playerTwo = 1  # AI
+    if mode == 'demo':
+        playerOne = 2  # Human : 0, Tree AI : 1, Random AI : 2
+        playerTwo = 1  # AI
 
     if mode == 'exp':
         playerOne = random.randint(1, 2);
@@ -137,7 +137,7 @@ def main(mode, wall, board, filename, score_tree, score_rand):
 
         clock.tick(MAX_FPS)
         p.display.flip()
-        if gameOver and mode == 'exp':
+        if gameOver:
             # game_number
             game_log = []
             game_log.append(experiment_count)
@@ -341,6 +341,24 @@ if __name__ == '__main__':
     ])
     if mode == 'exp':
         gs_counter = 0
+        #for boards in board_1:
+        #gs_counter += 1
+        experiment_count = 1
+
+        score_treeai = 0
+        score_randai = 0
+        filename = 'score_gamestate_.csv'
+        file = open(filename, 'w', newline='')
+        file.close()
+        for i in range(1):
+            board = board_1[0].copy()
+            score = main(mode, walls[i], board, filename, score_treeai, score_randai)
+            score_treeai = score[0]
+            score_randai = score[1]
+            experiment_count += 1
+
+    else:
+        gs_counter = 0
         for boards in board_1:
             gs_counter += 1
             experiment_count = 1
@@ -350,12 +368,10 @@ if __name__ == '__main__':
             filename = 'score_gamestate_' + str(gs_counter) + '.csv'
             file = open(filename, 'w', newline='')
             file.close()
-            for i in range(100):
+            for i in range(2):
                 board = boards.copy()
                 score = main(mode, walls[i], board, filename, score_treeai, score_randai)
                 score_treeai = score[0]
                 score_randai = score[1]
                 experiment_count += 1
-
-    else:
-        main(mode, walls[0])
+        
