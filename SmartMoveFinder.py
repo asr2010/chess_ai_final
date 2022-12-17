@@ -14,7 +14,6 @@ states = []
 win = 0
 piece = []
 hotencode = []
-
 hotencode_1 = []
 final=[]
 nb_classes = 13
@@ -24,16 +23,15 @@ def findRandomMove(validMoves):
 
 
 def findBestMove(gs, validMoves):
-    states.append([gs.board])
-    print(states)
+    # print(states)
     global nextMove
     nextMove = None
     random.shuffle(validMoves)
     findMoveNegaMaxAlphaBeta(gs, validMoves, DEPTH, -CHECKMATE, CHECKMATE, 1 if gs.whiteToMove else -1)
-    if (gs.checkMate == True or gs.staleMate == True or gs.drawGame == True):
-        checkRemPieces(gs,gs.board)
-        print(len(states))
-        indices_to_one_hot(states)
+    # if (gs.checkMate == True or gs.staleMate == True or gs.drawGame == True):
+    #     checkRemPieces(gs,gs.board)
+    #     print(len(states))
+    #     indices_to_one_hot(states)
     return nextMove
 
 def checkRemPieces(gs,board):
@@ -72,34 +70,6 @@ def checkRemPieces(gs,board):
     # print(len(hotencode_list))
 
 
-def indices_to_one_hot(states):
-    # Convert an iterable of indices to one-hot encoded labels.
-    for i in states:
-        for j in range(len(pieces)):
-            for k in i:
-                for l in k:
-                    for m in l:
-                        if m == pieces[j]:
-                            hotencode.append(1)
-                        else:
-                            hotencode.append(0)
-    #targets = np.array(hotencode).reshape(-1)
-    #array_he = np.eye(nb_classes)[targets]
-    #hotencode = [[i for i in j] for j in array_he]
-    hotencode_list = np.array(hotencode)
-    hot_arr = hotencode_list.reshape(len(states),832)
-    print(hot_arr[0])
-    print(len(hot_arr))
-    # array_he.reshape(64,-1)
-    # print(array_he[:65])
-    # for i in array_he:
-    #     hotencode = []
-    #     for j in range(64):
-    #         hotencode.append(i)
-    #     hotencode_1 = np.array(hotencode).reshape(-1)
-    #     hotencode_list.append(hotencode_1)
-    # print(len(hotencode_list))
-    # return np.eye(nb_classes)[targets]
 
 def findMoveNegaMax(gs, validMoves, depth, turnMultiplier):
     global nextMove
