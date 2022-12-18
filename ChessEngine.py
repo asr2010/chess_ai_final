@@ -224,6 +224,24 @@ class GameState:
                 if endPiece[0] != allyColor:
                     moves.append(Move((r, c), (endRow, endCol), self.board))
 
+    def getPieceScore(self):
+    # score [w, b]
+        piece_score = [0, 0]
+        for r in range(len(self.board)):
+            for c in range(len(self.board[r])):
+                color = self.board[r][c][0]
+                piece = self.board[r][c][1]
+                index = 0 if color == 'w' else 1
+
+                if piece == 'p':
+                    piece_score[index] += 1
+                elif piece == 'B' or piece == 'N':
+                    piece_score[index] += 3
+                elif piece == 'R':
+                    piece_score[index] += 5
+                elif piece == 'Q':
+                    piece_score[index] += 9
+        return piece_score
 
 class Move:
     # map keys to values

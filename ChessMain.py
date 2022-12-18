@@ -9,17 +9,21 @@ import numpy as np
 
 import ChessEngine
 import SmartMoveFinder
+import nn
 
 WIDTH = HEIGHT = 512
 DIMENSION = 8  # 8X8
 SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15  # for animations
 IMAGES = {}
-
+states = []
+state_scores = []
+training_data = []
+state_log = []
 
 def wallGenerator(mode):
     walls = []
-    if mode == 'demo':
+    if mode == 'demo' or mode == 'cnn':
         wall1_row = random.randrange(2, 4)
         wall1_col = random.randrange(0, 8)
         wall2_row = random.randrange(4, 6)
@@ -28,6 +32,17 @@ def wallGenerator(mode):
         walls.append(new_wall)
     elif mode == 'exp':
         while len(walls) < 100:
+            wall1_row = random.randrange(2, 4)
+            wall1_col = random.randrange(0, 8)
+            wall2_row = random.randrange(4, 6)
+            wall2_col = random.randrange(0, 8)
+            new_wall = [(wall1_row, wall1_col), (wall2_row, wall2_col)]
+            if new_wall in walls:
+                continue
+            else:
+                walls.append(new_wall)
+    elif mode == 'train':
+        while len(walls) < 20:
             wall1_row = random.randrange(2, 4)
             wall1_col = random.randrange(0, 8)
             wall2_row = random.randrange(4, 6)
@@ -53,13 +68,15 @@ def loadImages():
 # Handle User Input
 # Display current state
 
-def main(mode, wall, board, filename, score_tree, score_rand):
-    p.init()
+# def generate_game(board,)
 
+def main(mode, wall, board, filename = "game.csv", score_tree = 0, score_rand = 0):
+    p.init()
     screen = p.display.set_mode((WIDTH, HEIGHT))
     clock = p.time.Clock()
     screen.fill(p.Color('white'))
     gs = ChessEngine.GameState(wall, board)
+    states = np.array([gs.board])
     validMoves = gs.getValidMoves()
     moveMade = False
 
@@ -69,13 +86,31 @@ def main(mode, wall, board, filename, score_tree, score_rand):
 
     gameOver = False
     running = True
-    if mode == 'demo':
-        playerOne = 2  # Human : 0, Tree AI : 1, Random AI : 2
-        playerTwo = 1  # AI
+    if mode == 'demo' or mode == 'cnn':
+        print("Select control strategy for both players")
+        print(" 0: Human\n 1: Tree AI\n 2: Random AI")
+        p1 = input("Player 1: ")
+        p2 = input("Player 2: ")
+        playerOne = int(p1)  # Human : 0, Tree AI : 1, Random AI : 2
+        playerTwo = int(p2) # AI
 
     if mode == 'exp':
-        playerOne = random.randint(1, 2);
+        playerOne = random.randint(1, 2)
         playerTwo = 2 if playerOne == 1 else 1
+
+    if mode == 'train':
+        playerOne = random.randint(1, 2)
+        playerTwo = 2 if playerOne == 1 else 1
+    
+    # if mode == 'cnn':
+        # file = open("training_dataset.csv", "r", newline='')
+        # with file:
+        #     reader = csv.reader(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        #     for row in reader:
+        #         state_log.append((row[0], row[1]))
+        # file.close()
+        # print(state_log[0])
+        exit
 
     while running:
         humanTurn = (gs.whiteToMove and playerOne == 0) or (not gs.whiteToMove and playerTwo == 0)
@@ -98,7 +133,7 @@ def main(mode, wall, board, filename, score_tree, score_rand):
         # Tree AI Move maker
         if not gameOver and treeAiTurn:
             validMoves = gs.getValidMoves()
-            AImove = SmartMoveFinder.findBestMove(gs, validMoves)
+            AImove = nn.findBestMove_nn(gs, validMoves)
             if AImove is None:
                 AImove = SmartMoveFinder.findRandomMove(validMoves)
             print(AImove.getChessNotation())
@@ -114,11 +149,14 @@ def main(mode, wall, board, filename, score_tree, score_rand):
             moveMade = True
 
         if moveMade:
+            states = np.append(states, [gs.board], axis= 0)
             validMoves = gs.getValidMoves()
             moveMade = False
             # gs.checkRemainingPieces(gs.board)
-
+            
+        
         drawGameState(screen, gs, validMoves, sqSelected, wall)
+        
 
         if gs.checkMate:
             gameOver = True
@@ -134,10 +172,38 @@ def main(mode, wall, board, filename, score_tree, score_rand):
         elif gs.drawGame:
             gameOver = True
             drawText(screen, "Draw by Repetition")
-
+        
+        
+        
         clock.tick(MAX_FPS)
         p.display.flip()
-        if gameOver:
+        if gameOver and mode =="train":
+            score1 = gs.getPieceScore()
+            utility = score1[0] if score1[0] > score1[1] else -1*score1[1]
+            np.set_printoptions(threshold=np.inf)
+            # print(training_data)
+            
+            for i in range(len(states)):
+                state_utility_log = []
+                state_utility_log.append(np.array(states[i]))
+                state_utility_log.append(utility)
+                create_training_dataset(state_utility_log, filename)
+                #state_scores.append((states[i], utility))
+                states_return = states
+
+            break
+        
+
+
+
+        if gameOver and mode =="exp":
+            # score = gs.getPieceScore()
+            # utility = score[0] if score[0] > score[1] else -1*score[1]
+            # np.set_printoptions(threshold=np.inf)
+            # print(states)
+            # for i in range(len(states)):
+            #     state_scores.append((states[i], utility))
+            # print(state_scores)
             # game_number
             game_log = []
             game_log.append(experiment_count)
@@ -174,7 +240,7 @@ def main(mode, wall, board, filename, score_tree, score_rand):
             game_log.append(score_rand)
             export_to_csv(game_log, filename)
             break
-    return (score_tree, score_rand)
+    return (score_tree, score_rand, states_return, utility)
 
 
 def keystroke_handler(e, gameOver, gs, moveMade, playerClicks, sqSelected, validMoves, wall):
@@ -281,9 +347,31 @@ def export_to_csv(game_log, filename):
         write.writerow(game_log)
     file.close()
 
+def create_training_dataset(state_utility_log, filename):
+    hearder = ['Sates','Utility']
+    file = open(filename, 'a', newline='')
+    with file:
+        write = csv.writer(file)
+        write.writerow(state_utility_log)
+    file.close()
+
+def read_from_csv():
+    file = open("training_dataset.csv", "r", newline='', encoding='utf-8')
+    with file:
+        reader = csv.reader(file)
+        for row in reader:
+            state_log.append((row[0], row[1]))
+    file.close()
+    print(state_log[0])
+    training_data =state_log[:500]
+    testing_data = state_log[500:1000]
+
+    return training_data, testing_data
+
 
 if __name__ == '__main__':
-    mode = 'exp'
+    mode = 'train'
+    # read_from_csv()
     experiment_count = 1
 
     walls = wallGenerator(mode)
@@ -339,7 +427,7 @@ if __name__ == '__main__':
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']
         ]
     ])
-    if mode == 'exp':
+    if mode == 'train':
         gs_counter = 0
         #for boards in board_1:
         #gs_counter += 1
@@ -347,31 +435,41 @@ if __name__ == '__main__':
 
         score_treeai = 0
         score_randai = 0
-        filename = 'score_gamestate_.csv'
+        filename = 'training_dataset1.csv'
         file = open(filename, 'w', newline='')
         file.close()
-        for i in range(1):
+        # all_states = [board_1[0]]
+        # all_utilities = []
+        # states_generated = []
+        for i in range(2):
             board = board_1[0].copy()
             score = main(mode, walls[i], board, filename, score_treeai, score_randai)
             score_treeai = score[0]
             score_randai = score[1]
+            # all_states.append(score[2])   
+            # all_utilities.append(score[3])
+            # print(all_utilities)
+            # print("i",i)
+            # if i == 1:
+            #     utilities = []
+            #     for j in all_states:
+            #         for k in j:
+            #             utilities.append(all_utilities[j])
+            #     states1 = all_states.flatten()
+            #     print(utilities)
+            #     for j in states1:
+            #         states_generated = zip(states1, utilities)
+            #     # return_values(all_states,all_utilities)
+            # # print(all_states)
+            # # print(all_utilities)
             experiment_count += 1
 
-    else:
-        gs_counter = 0
-        for boards in board_1:
-            gs_counter += 1
-            experiment_count = 1
+    elif mode =='cnn':
+        score = main(mode, walls[0], board_1[0])
 
-            score_treeai = 0
-            score_randai = 0
-            filename = 'score_gamestate_' + str(gs_counter) + '.csv'
-            file = open(filename, 'w', newline='')
-            file.close()
-            for i in range(2):
-                board = boards.copy()
-                score = main(mode, walls[i], board, filename, score_treeai, score_randai)
-                score_treeai = score[0]
-                score_randai = score[1]
-                experiment_count += 1
-        
+    else:
+        for i in range(5):
+            print(board_1[i])
+        board = input("Select the board size you want out of 5: ")
+        score = main(mode, walls[0], board_1[int(board)])
+               
