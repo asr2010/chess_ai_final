@@ -1,6 +1,6 @@
 # CIS667_Chess_AI
-****
-Attribution and link to the code used in the project:****
+
+**Attribution and link to the code used in the project:**
 
 https://github.com/mikolaj-skrzypczak/chess-engine https://healeycodes.com/building-my-own-chess-engine
 
