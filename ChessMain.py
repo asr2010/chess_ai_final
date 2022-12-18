@@ -30,7 +30,7 @@ def wallGenerator(mode):
         wall2_col = random.randrange(0, 8)
         new_wall = [(wall1_row, wall1_col), (wall2_row, wall2_col)]
         walls.append(new_wall)
-    elif mode == 'exp':
+    elif mode == 'exp' or mode == 'nn':
         while len(walls) < 100:
             wall1_row = random.randrange(2, 4)
             wall1_col = random.randrange(0, 8)
@@ -93,7 +93,7 @@ def main(mode, wall, board, filename="file.csv", score_tree=0, score_rand=0):
         playerOne = int(p1)  # Human : 0, Tree AI : 1, Random AI : 2
         playerTwo = int(p2) # AI
 
-    if mode == 'exp' or mode == 'train':
+    if mode == 'exp' or mode == 'train' or mode == 'nn':
         playerOne = random.randint(1, 2)
         playerTwo = 2 if playerOne == 1 else 1
 
@@ -174,7 +174,7 @@ def main(mode, wall, board, filename="file.csv", score_tree=0, score_rand=0):
 
             break
         
-        if gameOver and mode =="exp":
+        if gameOver and (mode =="exp" or mode == "nn"):
             game_log = []
             game_log.append(experiment_count)
             # player 1
@@ -420,6 +420,27 @@ if __name__ == '__main__':
             score_treeai = score[0]
             score_randai = score[1]
             experiment_count += 1
+
+    elif mode == 'nn':
+        gs_counter = 0
+        name_list = ['arpit', 'sneha', 'spandan']
+        for name in name_list:
+            for boards in board_1:
+                gs_counter += 1
+                experiment_count = 1
+
+                score_treeai = 0
+                score_randai = 0
+                filename = 'score_gamestate_' + name + '_nn_' + str(gs_counter) + '.csv'
+                file = open(filename, 'w', newline='')
+                file.close()
+                for i in range(100):
+                    SmartMoveFinder.node_count = 0
+                    board = boards.copy()
+                    score = main(mode, walls[i], board, filename, score_treeai, score_randai)
+                    score_treeai = score[0]
+                    score_randai = score[1]
+                    experiment_count += 1
 
     else:
         for i in range(5):

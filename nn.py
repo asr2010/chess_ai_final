@@ -71,8 +71,18 @@ def batch_error(net, batch):
 
 def training():
     batched = True
+
+    # Neural Network part from Arpit
     net = LinNet(size=8, hid_features=16)
     optimizer = tr.optim.SGD(net.parameters(), lr=0.001)
+
+    # Neural Network part from Sneha
+    net = LinNet(size=8, hid_features=12)
+    optimizer = tr.optim.SGD(net.parameters(), lr=0.010)
+
+    # Neural Network part from Spandan
+    net = LinNet(size=8, hid_features=20)
+    optimizer = tr.optim.SGD(net.parameters(), lr=0.005)
 
 
     file = open("training_dataset.csv", "r", newline='')
