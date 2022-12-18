@@ -9,13 +9,17 @@ import numpy as np
 
 import ChessEngine
 import SmartMoveFinder
+import nn
 
 WIDTH = HEIGHT = 512
 DIMENSION = 8  # 8X8
 SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15  # for animations
 IMAGES = {}
-
+states = []
+state_scores = []
+training_data = []
+state_log = []
 
 def wallGenerator(mode):
     walls = []
@@ -28,6 +32,17 @@ def wallGenerator(mode):
         walls.append(new_wall)
     elif mode == 'exp':
         while len(walls) < 100:
+            wall1_row = random.randrange(2, 4)
+            wall1_col = random.randrange(0, 8)
+            wall2_row = random.randrange(4, 6)
+            wall2_col = random.randrange(0, 8)
+            new_wall = [(wall1_row, wall1_col), (wall2_row, wall2_col)]
+            if new_wall in walls:
+                continue
+            else:
+                walls.append(new_wall)
+    elif mode == 'train':
+        while len(walls) < 20:
             wall1_row = random.randrange(2, 4)
             wall1_col = random.randrange(0, 8)
             wall2_row = random.randrange(4, 6)
@@ -53,13 +68,14 @@ def loadImages():
 # Handle User Input
 # Display current state
 
-def main(mode, wall, board, filename, score_tree, score_rand):
+def main(mode, wall, board, filename="file.csv", score_tree=0, score_rand=0):
     p.init()
 
     screen = p.display.set_mode((WIDTH, HEIGHT))
     clock = p.time.Clock()
     screen.fill(p.Color('white'))
     gs = ChessEngine.GameState(wall, board)
+    states = np.array([gs.board])
     validMoves = gs.getValidMoves()
     moveMade = False
 
@@ -69,12 +85,16 @@ def main(mode, wall, board, filename, score_tree, score_rand):
 
     gameOver = False
     running = True
+    if mode == 'demo':
+        print("Select control strategy for both players")
+        print(" 0: Human\n 1: Tree AI\n 2: Random AI")
+        p1 = input("Player 1: ")
+        p2 = input("Player 2: ")
+        playerOne = int(p1)  # Human : 0, Tree AI : 1, Random AI : 2
+        playerTwo = int(p2) # AI
 
-    playerOne = 0  # Human : 0, Tree AI : 1, Random AI : 2
-    playerTwo = 1  # AI
-
-    if mode == 'exp':
-        playerOne = random.randint(1, 2);
+    if mode == 'exp' or mode == 'train':
+        playerOne = random.randint(1, 2)
         playerTwo = 2 if playerOne == 1 else 1
 
     while running:
@@ -103,6 +123,8 @@ def main(mode, wall, board, filename, score_tree, score_rand):
                 AImove = SmartMoveFinder.findRandomMove(validMoves)
             print(AImove.getChessNotation())
             gs.makeMove(AImove)
+            if gs.whiteToMove:
+                gs.checkforDraw(gs.board)
             moveMade = True
 
         # Random AI Move maker
@@ -114,6 +136,7 @@ def main(mode, wall, board, filename, score_tree, score_rand):
             moveMade = True
 
         if moveMade:
+            states = np.append(states, [gs.board], axis= 0)
             validMoves = gs.getValidMoves()
             moveMade = False
             # gs.checkRemainingPieces(gs.board)
@@ -137,8 +160,21 @@ def main(mode, wall, board, filename, score_tree, score_rand):
 
         clock.tick(MAX_FPS)
         p.display.flip()
-        if gameOver and mode == 'exp':
-            # game_number
+        if gameOver and mode =="train":
+            score1 = gs.getPieceScore()
+            utility = score1[0] if score1[0] > score1[1] else -1*score1[1]
+            np.set_printoptions(threshold=np.inf)
+            
+            for i in range(len(states)):
+                state_utility_log = []
+                state_utility_log.append(np.array(states[i]))
+                state_utility_log.append(utility)
+                create_training_dataset(state_utility_log, filename)
+                states_return = states
+
+            break
+        
+        if gameOver and mode =="exp":
             game_log = []
             game_log.append(experiment_count)
             # player 1
@@ -172,6 +208,11 @@ def main(mode, wall, board, filename, score_tree, score_rand):
 
             game_log.append(score_tree)
             game_log.append(score_rand)
+            (score_white, score_black) = gs.getPieceScore()
+            game_log.append(score_white)
+            game_log.append(score_black)
+            game_log.append(score_white - score_black)
+            game_log.append(SmartMoveFinder.node_count)
             export_to_csv(game_log, filename)
             break
     return (score_tree, score_rand)
@@ -272,7 +313,7 @@ def drawText(screen, text):
 
 
 def export_to_csv(game_log, filename):
-    headers = ['Game Number', 'Player 1', 'Player 2', 'Wall 1', 'Wall 2', 'Winner', 'Score Tree', 'Score Random']
+    headers = ['Game Number', 'Player 1', 'Player 2', 'Wall 1', 'Wall 2', 'Winner', 'Score Tree', 'Score Random', 'White Game Score', 'Black Game Score', 'Score Difference', 'Nodes Traversed']
     file = open(filename, 'a', newline='')
     with file:
         write = csv.writer(file)
@@ -281,6 +322,13 @@ def export_to_csv(game_log, filename):
         write.writerow(game_log)
     file.close()
 
+def create_training_dataset(state_utility_log, filename):
+    hearder = ['Sates','Utility']
+    file = open(filename, 'a', newline='')
+    with file:
+        write = csv.writer(file)
+        write.writerow(state_utility_log)
+    file.close()
 
 if __name__ == '__main__':
     mode = 'exp'
@@ -351,11 +399,30 @@ if __name__ == '__main__':
             file = open(filename, 'w', newline='')
             file.close()
             for i in range(100):
+                SmartMoveFinder.node_count = 0
                 board = boards.copy()
                 score = main(mode, walls[i], board, filename, score_treeai, score_randai)
                 score_treeai = score[0]
                 score_randai = score[1]
                 experiment_count += 1
 
+    elif mode =='train':
+        gs_counter = 0
+        experiment_count = 1
+        score_treeai = 0
+        score_randai = 0
+        filename = 'training_dataset.csv'
+        file = open(filename, 'w', newline='')
+        file.close()
+        for i in range(20):
+            board = board_1[0].copy()
+            score = main(mode, walls[i], board, filename, score_treeai, score_randai)
+            score_treeai = score[0]
+            score_randai = score[1]
+            experiment_count += 1
+
     else:
-        main(mode, walls[0])
+        for i in range(5):
+            print(board_1[i])
+        board = input("Select the board size you want out of 5: ")
+        score = main(mode, walls[0], board_1[int(board)])

@@ -37,7 +37,7 @@ class GameState:
         else:
             self.pastGameState[str(board)] = 1
 
-        if 50 in self.pastGameState.values():
+        if 3 in self.pastGameState.values():
             self.drawGame = True
 
     def makeMove(self, move):
@@ -49,8 +49,6 @@ class GameState:
         self.board[move.endRow][move.endCol] = move.pieceMoved
         self.moveLog.append(move)
         self.whiteToMove = not self.whiteToMove
-        if self.whiteToMove:
-            self.checkforDraw(self.board)
 
         # update kings location if moved
 
@@ -136,6 +134,25 @@ class GameState:
                     piece = self.board[r][c][1]
                     self.moveFunctions[piece](r, c, moves)
         return moves
+
+    def getPieceScore(self):
+        # score [w, b]
+        piece_score = [0, 0]
+        for r in range(len(self.board)):
+            for c in range(len(self.board[r])):
+                color = self.board[r][c][0]
+                piece = self.board[r][c][1]
+                index = 0 if color == 'w' else 1
+
+                if piece == 'p':
+                    piece_score[index] += 1
+                elif piece == 'B' or piece == 'N':
+                    piece_score[index] += 3
+                elif piece == 'R':
+                    piece_score[index] += 5
+                elif piece == 'Q':
+                    piece_score[index] += 9
+        return piece_score
 
     def getPawnMoves(self, r, c, moves):
         if self.whiteToMove:

@@ -1,10 +1,21 @@
 import random
+import torch as tr
+import numpy as np
+import numpy as np
 
 pieceScore = {"K": 0, "Q": 9, "R": 5, "B": 3, "N": 3, "p": 1}
 CHECKMATE = 1000
 STALEMATE = 0
 DEPTH = 2
 
+node_count = 0
+states = []
+win = 0
+piece = []
+hotencode = []
+hotencode_1 = []
+final=[]
+nb_classes = 13
 
 def findRandomMove(validMoves):
     return validMoves[random.randint(0, len(validMoves) - 1)]
@@ -38,6 +49,8 @@ def findMoveNegaMax(gs, validMoves, depth, turnMultiplier):
 
 def findMoveNegaMaxAlphaBeta(gs, validMoves, depth, alpha, beta, turnMultiplier):
     global nextMove
+    global node_count
+    node_count += 1
     if depth == 0:
         return turnMultiplier * scoreBoard(gs)
 
